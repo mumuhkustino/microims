@@ -1,0 +1,72 @@
+import datetime, pymysql, httplib2, json
+from app import app, db
+from flask import request, jsonify, make_response
+
+#Root API
+@app.route("/")
+def root():
+    return "Micro IMS - Distributed System"
+
+#API PRODUK - PRODUK DI GUDANG (Info Semua Product) dan API POST PRODUK DI GUDANG (Update Stok)
+@app.route("/api/products", methods=['GET', 'POST'])
+def products():
+
+    connection = None
+    cursor = None
+    try:
+        connection = db.connect()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        products = cursor.execute("SELECT product_id, product_name, product_quantity FROM product")
+        products = cursor.fetchall()
+        return make_response(jsonify(products)), 200
+    except Exception as e:
+        print(e)
+    finally:
+        cursor.close()
+        connection.close()
+
+#API GET PRODUK DI GUDANG (Info Stok)
+@app.route("/api/products/<int:product_id>", methods=['GET'])
+def product(product_id):
+    connection = None
+    cursor = None
+    try:
+        connection = db.connect()
+        cursor = connection.cursor(pymysql.cursors.DictCursor)
+        product = cursor.execute("SELECT product_id, product_name, product_quantity FROM product WHERE product_id='" + str(product_id) + "'")
+        product = cursor.fetchone()
+        return make_response(jsonify(product)), 200
+    except Exception as e:
+        print(e)
+    finally:
+        cursor.close()
+        connection.close()
+
+#API PRODUCTS DARI GUDANG LAIN
+@app.route("/api/inventories/<int:product_id>", methods=['GET', 'POST'])
+def inventories(product_id):
+    # connection = None
+    # cursor = None
+    try:
+        address = 'http://localhost:2001/api/products/'
+        url = address + str(product_id)
+        h = httplib2.Http()
+        resp, result = h.request(url, 'GET')
+        return make_response(json.loads(result)), 200
+        if resp['status'] != '200':
+            raise Exception('Received an unsuccessful status code of %s' % resp['status'])
+        
+    except Exception as err:
+        print ("FAILED: Could not make GET Request to web server")
+        # print (err.args)
+        # sys.exit()
+    else:
+        print ("PASS: Successfully Made GET Request to /api/products")
+    # finally:
+    #     cursor.close()
+    #     connection.close()
+
+#API PRODUCTS DARI VENDOR KE GUDANG
+@app.route("/api/vendor/<int:product_id>", methods=['POST', 'GET'])
+def vendor():
+    return
